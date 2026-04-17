@@ -2,7 +2,6 @@
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <string.h>
-#include <unistd.h>
 
 struct msg_buffer{
 	long msg_type;
@@ -25,7 +24,6 @@ int main(){
 	while(scount < 2){
 		msgrcv(q1, &msg, sizeof(msg) - sizeof(long), 1, 0);
 		scount++;
-		int a_id = scount;
 
 		if(a_id == 1){
 			p1 = msg.s_id;
@@ -33,11 +31,11 @@ int main(){
 			p2 = msg.s_id;
 		}
 
-		printf("[SERVER] Sensor %d connected\n", a_id);
+		printf("[SERVER] Sensor %d connected\n", scount);
 
 		struct msg_buffer rep;
 		rep.msg_type = msg.s_id;
-		rep.s_id = a_id;
+		rep.s_id = scount;
 		strcpy(rep.msg_text, "REGISTERED");
 
 		msgsnd(q2, &rep, sizeof(rep) - sizeof(long), 0);
@@ -51,7 +49,7 @@ int main(){
 		while(!(r1 && r2)){
 			msgrcv(q1, &msg, sizeof(msg) - sizeof(long), 0, 0);
 
-			if(msg.msg_type == 3 && strcmp(msg.msg_text, "EXIT") == 0){
+			if(msg.msg_type == 3){
 				printf("\n[SERVER] Exit signal received\n");
 
 				struct msg_buffer sd_msg;
@@ -61,7 +59,7 @@ int main(){
 				msgsnd(q2, &sd_msg, sizeof(sd_msg) - sizeof(long), 0);
 
 				sd_msg.msg_type = p2;
-	                        msgsnd(q2, &sd_msg, sizeof(sd_msg) - sizeof(long), 0);
+	            msgsnd(q2, &sd_msg, sizeof(sd_msg) - sizeof(long), 0);
 
 				printf("[SERVER] Shutting down system...\n");
 
@@ -77,12 +75,6 @@ int main(){
 				continue;
 			}
 
-			if(msg.s_id == p1 && r1){
-                                continue;
-                        } else if(msg.s_id == p2 && r2){
-                                continue;
-                        }
-
 			if(msg.s_id == p1){
 				if(r1) continue:
 				r1 = 1;
@@ -95,7 +87,7 @@ int main(){
 			strcpy(c, msg.msg_text);
 			char *t = strtok(c, "|");
 
-			while(t != NULL){
+			while(t){
 				int id;
 				char loc, stat;
 				sscanf(t, "%d %c %c", &id, &loc, &stat);
@@ -141,14 +133,11 @@ int main(){
 		printf("\n[SERVER] City Status : %s\n", status);
 
 		struct msg_buffer rep;
-
 		rep.msg_type = p1;
 		strcpy(rep.msg_text, status);
 		msgsnd(q2, &rep, sizeof(rep) - sizeof(long), 0);
 
 		rep.msg_type = p2;
-                strcpy(rep.msg_text, status);
-                msgsnd(q2, &rep, sizeof(rep) - sizeof(long), 0);
+        msgsnd(q2, &rep, sizeof(rep) - sizeof(long), 0);
 	}
-	return 0;
 }
